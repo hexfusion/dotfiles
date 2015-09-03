@@ -8,7 +8,7 @@
 
 dir=~/dotfiles                    # dotfiles directory
 olddir=~/dotfiles_old             # old dotfiles backup directory
-files="tmuxinator weechat aliases bashrc git-fetch-branch git_term gitconfig vimrc"    # list of files/folders to symlink in homedir
+files="tmuxinator weechat aliases git-fetch-branch git_term gitconfig vimrc"    # list of files/folders to symlink in homedir
 
 ##########
 
