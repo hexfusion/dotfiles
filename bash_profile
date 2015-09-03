@@ -35,4 +35,4 @@ EDITOR='vim'
 
 . ~/.git_term
 . ~/.aliases
- 
+source ~/.git-prompt.sh
