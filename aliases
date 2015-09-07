@@ -7,8 +7,6 @@ alias gf='git flow'
 alias realias='$EDITOR ~/.aliases; source ~/.aliases'
 alias git-archive-here='git archive --format=tar HEAD | gzip'
 alias pod=perldoc
-alias feature='git flow feature'
-alias release='git flow release'
 
 # these are from Yuval Kogman
 alias ts="prove --state=slow,save -j3 -r"
@@ -19,11 +17,10 @@ alias s='sudo'
 
 # git
 alias g='git'
-alias gs='git status'
-alias gd='git df'
-alias go='git co'
-alias gb='git br'
-alias gc='git ci'
+alias gs='git stash'
+alias grh='git reset HEAD'
+alias gpr='git pull --rebase'
+alias reset='git reset HEAD~1 --soft'
 
 # tmux
 alias take='tmux detach -a'
@@ -31,6 +28,9 @@ alias give='tmux detach'
 alias spin='tmux source-file ~/.tmux.conf'
 alias stomp='tmux kill-session'
 alias weather='weather KBGM'
+
+# perl modules
+alias release='RELEASE_TESTING=1 make test'
 
 # camps
 alias re='re --all'
