@@ -9,6 +9,9 @@ set sw=4
 set paste
 set nonumber
 
+" turn on spelling
+set spell spelllang=en_us
+
 " save location
 set viminfo=%,'50,\"100,:100,n~/.viminfo
 function! ResCur()
