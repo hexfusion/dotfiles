@@ -31,6 +31,9 @@ alias dir='dir --color=auto'
 # Run ondir on login
 #eval "`ondir /`"
 
+# add local bin for e.g. tmux
+export PATH="$HOME/local/bin:$PATH"
+
 EDITOR='vim'
 
 . ~/.git_term
