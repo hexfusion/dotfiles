@@ -8,7 +8,7 @@
 
 dir=~/dotfiles                    # dotfiles directory
 olddir=~/dotfiles_old             # old dotfiles backup directory
-files="tmuxinator bashrc screenrc lynx_bookmarks.html lynxrc iterm2_shell_integration.bash git-prompt.sh bash_profile weechat aliases git-fetch-branch git_term gitconfig vimrc"    # list of files/folders to symlink in homedir
+files="tmuxinator bashrc screenrc tmux.conf lynx_bookmarks.html lynxrc iterm2_shell_integration.bash git-prompt.sh bash_profile weechat aliases git-fetch-branch git_term gitconfig vimrc"    # list of files/folders to symlink in homedir
 
 ##########
 
@@ -27,6 +27,9 @@ echo "done"
 echo -n "Installing local tmux ..."
 ./tmux_local_install.sh
 echo "done"
+
+echo -n "Installing tmuxstart ..."
+cp bin/tmuxstart ~/local/bin/
 
 # move any existing dotfiles in homedir to dotfiles_old directory, then create symlinks from the homedir to any files in the ~/dotfiles directory specified in $files
 for file in $files; do
