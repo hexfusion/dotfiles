@@ -23,13 +23,17 @@ cd $dir
 echo "done"
 
 # install local tmux
-
+if ! [ -x "$(command -v tmux)" ]; then
+  echo 'tmux is not installed.' >&2
 echo -n "Installing local tmux ..."
 ./tmux_local_install.sh
 echo "done"
+fi
 
+if ! [ -x "$(command -v tmuxstart)" ]; then
 echo -n "Installing tmuxstart ..."
 cp bin/tmuxstart ~/local/bin/
+fi
 
 # move any existing dotfiles in homedir to dotfiles_old directory, then create symlinks from the homedir to any files in the ~/dotfiles directory specified in $files
 for file in $files; do
