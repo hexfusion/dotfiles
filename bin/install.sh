@@ -8,7 +8,7 @@
 
 dir=~/dotfiles                    # dotfiles directory
 olddir=~/dotfiles_old             # old dotfiles backup directory
-files="tmuxinator bashrc screenrc tmux.conf lynx_bookmarks.html lynxrc iterm2_shell_integration.bash git-prompt.sh bash_profile weechat aliases git-fetch-branch git_term gitconfig vimrc"    # list of files/folders to symlink in homedir
+files="tmuxinator bashrc tmuxstart screenrc tmux.conf lynx_bookmarks.html lynxrc iterm2_shell_integration.bash git-prompt.sh bash_profile weechat aliases git-fetch-branch git_term gitconfig vimrc"    # list of files/folders to symlink in homedir
 
 ##########
 
