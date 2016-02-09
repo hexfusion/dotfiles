@@ -32,6 +32,14 @@ alias weather='weather KBGM'
 # perl modules
 alias release='RELEASE_TESTING=1 make test'
 
+# punch
+alias pi='punch in'
+alias pl='punch list'
+alias po='punch out'
+alias apsum='archive-punch summary'
+alias psum='punch summary'
+alias ptot='punch total'
+
 # camps
 alias re='re --all'
 
