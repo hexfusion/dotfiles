@@ -1,16 +1,15 @@
-" I hate spaces in end of lines or tabs anywhere
-" match Error /\t\|\s\+$/
-
 " convert tabs to spaces, use 4 spaces (in tab jump and shift)
+set nocompatible
 set ts=4
 set expandtab
 set sw=4
-
 set paste
-set nonumber
+set number
+
+set backspace=indent,eol,start
 
 " turn on spelling
-set spell spelllang=en_us
+" set spell spelllang=en_us
 
 " save location
 set viminfo=%,'50,\"100,:100,n~/.viminfo
@@ -28,7 +27,7 @@ augroup END
 
 set mouse=r
 
-set list
+set nolist
 " pretty colors
 syntax on
 set background=light
@@ -40,6 +39,9 @@ set background=light
 filetype indent on
 set filetype=html
 set smartindent
+
+:nmap <leader>t :set expandtab<CR>
+:nmap <leader>T :set noexpandtab<CR>
 
 " PERL TIDY
 "define :Tidy command to run perltidy on visual selection || entire buffer"
