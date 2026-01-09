@@ -200,6 +200,16 @@ fi
 
 success "Created $gitconfig"
 
+# Install starship if not present
+info "Checking for starship..."
+if ! command -v starship &>/dev/null && [ ! -x "$LOCAL_BIN/starship" ]; then
+    info "Installing starship to $LOCAL_BIN..."
+    curl -sS https://starship.rs/install.sh | sh -s -- --bin-dir "$LOCAL_BIN" -y
+    success "Starship installed"
+else
+    success "Starship already installed"
+fi
+
 # Bashrc starship init
 info "Checking bashrc for starship..."
 if ! grep -q 'starship init bash' "$HOME/.bashrc" 2>/dev/null; then
