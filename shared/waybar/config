@@ -1,0 +1,103 @@
+{
+    "layer": "top",
+    "position": "bottom",
+    "height": 20,
+    "spacing": 0,
+    "modules-left": ["sway/workspaces", "sway/mode"],
+    "modules-center": ["tray"],
+    "modules-right": ["pulseaudio", "bluetooth", "network#eth", "network#wifi", "cpu", "custom/temp", "memory", "backlight", "battery", "clock"],
+
+    "sway/workspaces": {
+        "disable-scroll": false,
+        "all-outputs": false,
+        "format": "{name}"
+    },
+
+    "sway/mode": {
+        "format": "{}"
+    },
+
+    "tray": {
+        "spacing": 8
+    },
+
+    "clock": {
+        "format": "{:%H:%M}",
+        "format-alt": "{:%a %d.%m.%Y %H:%M}",
+        "tooltip-format": "<big>{:%B %Y}</big>\n<tt>{calendar}</tt>"
+    },
+
+    "cpu": {
+        "format": "󰻠 {usage}%",
+        "interval": 2
+    },
+
+    "custom/temp": {
+        "exec": "~/.local/bin/cpu-temp",
+        "return-type": "json",
+        "interval": 3
+    },
+
+    "memory": {
+        "format": "󰍛 {}%"
+    },
+
+    "backlight": {
+        "format": "󰃟 {percent}%",
+        "on-scroll-up": "brightnessctl set +5%",
+        "on-scroll-down": "brightnessctl set 5%-",
+        "on-click": "brightnessctl set +10%",
+        "on-click-right": "brightnessctl set 10%-"
+    },
+
+    "battery": {
+        "states": {
+            "good": 75,
+            "warning": 50,
+            "low": 25,
+            "critical": 15
+        },
+        "format": "{icon} {capacity}%",
+        "format-charging": "󰂄 {capacity}%",
+        "format-plugged": "󰚥 {capacity}%",
+        "format-full": "󰁹",
+        "format-icons": ["󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
+    },
+
+    "network#eth": {
+        "interface": "enp98s0u2u1u2",
+        "format-ethernet": "󰈀 {ipaddr}",
+        "format-disconnected": "",
+        "tooltip-format": "{ifname}: {ipaddr}",
+        "on-click": "nm-connection-editor"
+    },
+
+    "network#wifi": {
+        "interface": "wlp191s0",
+        "format-wifi": "󰤨 {essid}",
+        "format-disconnected": "",
+        "tooltip-format": "{essid}\n{ifname}: {ipaddr}",
+        "on-click": "nm-connection-editor"
+    },
+
+    "pulseaudio": {
+        "format": "{icon} {volume}%",
+        "format-muted": "󰖁",
+        "format-icons": {
+            "default": ["󰕿", "󰖀", "󰕾"]
+        },
+        "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+        "on-click-right": "pavucontrol",
+        "on-scroll-up": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 2%+",
+        "on-scroll-down": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 2%-"
+    },
+
+    "bluetooth": {
+        "format": "󰂯 on",
+        "format-connected": "󰂱 {device_alias}",
+        "format-disabled": "󰂲 off",
+        "on-click": "blueman-manager",
+        "tooltip-format": "{controller_alias}\n{device_enumerate}",
+        "tooltip-format-enumerate-connected": "{device_alias}"
+    }
+}

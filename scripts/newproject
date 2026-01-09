@@ -1,0 +1,190 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# newproject - Create a standardized project workspace
+#
+# Structure:
+#   ~/work/projects/<name>/{repo,notes,scratch}  (work - default)
+#   ~/dev/projects/<name>/{repo,notes,scratch}   (personal)
+
+WORK_BASE="$HOME/work"
+DEV_BASE="$HOME/dev"
+
+usage() {
+    cat <<EOF
+Usage: newproject [context] <git-url> [project-name]
+
+Contexts:
+    -w, --work      Create in ~/work/projects/ (default)
+    -d, --dev       Create in ~/dev/projects/
+
+Arguments:
+    git-url         Git repository URL to clone
+    project-name    Optional: override the project name (defaults to repo name)
+
+Examples:
+    newproject https://github.com/flightctl/flightctl        # defaults to work
+    newproject -w https://github.com/flightctl/flightctl
+    newproject --dev git@github.com:me/side-project.git
+    newproject -w https://github.com/org/repo my-custom-name
+
+Other commands:
+    newproject init             Initialize base directories (~/work, ~/dev)
+    newproject list             List all projects
+    newproject open <name>      Open project in VSCode
+    newproject -h, --help       Show this help
+EOF
+    exit 1
+}
+
+init_base() {
+    echo "Initializing base directory structure..."
+
+    for base in "$WORK_BASE" "$DEV_BASE"; do
+        mkdir -p "$base/design/repo"
+        mkdir -p "$base/design/notes"
+        mkdir -p "$base/projects"
+        echo "Created $base/{design/{repo,notes},projects}"
+    done
+
+    echo ""
+    echo "Base structure ready:"
+    echo "  ~/work/design/    - Work planning & design docs"
+    echo "  ~/work/projects/  - Work project workspaces"
+    echo "  ~/dev/design/     - Personal planning & design docs"
+    echo "  ~/dev/projects/   - Personal project workspaces"
+}
+
+list_projects() {
+    echo "Work projects (~/work/projects):"
+    if [[ -d "$WORK_BASE/projects" ]]; then
+        for dir in "$WORK_BASE/projects"/*/; do
+            [[ -d "$dir" ]] && echo "  - $(basename "$dir")"
+        done
+    else
+        echo "  (none)"
+    fi
+
+    echo ""
+    echo "Dev projects (~/dev/projects):"
+    if [[ -d "$DEV_BASE/projects" ]]; then
+        for dir in "$DEV_BASE/projects"/*/; do
+            [[ -d "$dir" ]] && echo "  - $(basename "$dir")"
+        done
+    else
+        echo "  (none)"
+    fi
+}
+
+extract_repo_name() {
+    local url="$1"
+    # Handle various URL formats
+    # https://github.com/org/repo.git -> repo
+    # git@github.com:org/repo.git -> repo
+    # https://github.com/org/repo -> repo
+    basename "$url" .git
+}
+
+find_project() {
+    local name="$1"
+    local found=""
+
+    # Check work projects first
+    if [[ -d "$WORK_BASE/projects/$name" ]]; then
+        found="$WORK_BASE/projects/$name"
+    elif [[ -d "$DEV_BASE/projects/$name" ]]; then
+        found="$DEV_BASE/projects/$name"
+    fi
+
+    echo "$found"
+}
+
+open_project() {
+    local name="$1"
+    local project_dir
+
+    project_dir=$(find_project "$name")
+
+    if [[ -z "$project_dir" ]]; then
+        echo "Error: Project '$name' not found"
+        echo ""
+        echo "Available projects:"
+        list_projects
+        exit 1
+    fi
+
+    echo "Opening $project_dir"
+    code "$project_dir"
+}
+
+create_project() {
+    local base="$1"
+    local url="$2"
+    local name="${3:-$(extract_repo_name "$url")}"
+    local context_name="$4"
+
+    local project_dir="$base/projects/$name"
+
+    # Check if project already exists
+    if [[ -d "$project_dir" ]]; then
+        echo "Error: Project already exists at $project_dir"
+        exit 1
+    fi
+
+    echo "Creating $context_name project: $name"
+    echo "Location: $project_dir"
+    echo ""
+
+    # Create directory structure
+    mkdir -p "$project_dir/repo"
+    mkdir -p "$project_dir/notes"
+    mkdir -p "$project_dir/scratch"
+
+    # Clone the repository
+    echo "Cloning repository..."
+    git clone "$url" "$project_dir/repo"
+
+    echo ""
+    echo "Project created: $project_dir/"
+    echo "  repo/     <- git clone"
+    echo "  notes/    <- your notes"
+    echo "  scratch/  <- experiments"
+    echo ""
+    echo "Open: newproject open $name"
+}
+
+# Main
+[[ $# -eq 0 ]] && usage
+
+case "$1" in
+    init)
+        init_base
+        ;;
+    list)
+        list_projects
+        ;;
+    open)
+        [[ $# -lt 2 ]] && { echo "Usage: newproject open <name>"; exit 1; }
+        open_project "$2"
+        ;;
+    -h|--help)
+        usage
+        ;;
+    -w|--work)
+        [[ $# -lt 2 ]] && usage
+        create_project "$WORK_BASE" "$2" "${3:-}" "work"
+        ;;
+    -d|--dev)
+        [[ $# -lt 2 ]] && usage
+        create_project "$DEV_BASE" "$2" "${3:-}" "dev"
+        ;;
+    *)
+        # Default to work if no flag provided and arg looks like a URL
+        if [[ "$1" =~ ^(https://|git@|ssh://) ]]; then
+            create_project "$WORK_BASE" "$1" "${2:-}" "work"
+        else
+            echo "Error: Unknown option '$1'"
+            usage
+        fi
+        ;;
+esac

@@ -1,0 +1,15 @@
+#!/bin/bash
+# Find k10temp sensor dynamically
+for hwmon in /sys/class/hwmon/hwmon*; do
+    if [ "$(cat "$hwmon/name" 2>/dev/null)" = "k10temp" ]; then
+        temp=$(cat "$hwmon/temp1_input" 2>/dev/null)
+        if [ -n "$temp" ]; then
+            # Convert to Fahrenheit
+            c=$((temp / 1000))
+            f=$(( (c * 9 / 5) + 32 ))
+            echo "{\"text\": \"󰔏 ${f}°F\", \"class\": \"$([ $c -ge 85 ] && echo critical || echo normal)\"}"
+            exit 0
+        fi
+    fi
+done
+echo '{"text": "󰔏 --", "class": "error"}'

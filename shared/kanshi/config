@@ -1,0 +1,26 @@
+# Kanshi - automatic display configuration
+# Using stable identifiers (make model serial) instead of connector names
+# Connector names like DP-1, DP-3 can change across reboots with Thunderbolt docks
+
+# Laptop only
+profile laptop {
+    output eDP-1 enable scale 1.5 position 0,0
+}
+
+# Triple external monitors (laptop display off)
+# All monitors at 1920x1080 for uniformity
+# Left: Dell S2721HGF 5GZWZ13 | Center: Dell S2719DGF | Right: Dell S2721HGF 65591H3
+profile triple-external {
+    output eDP-1 disable
+    output "Dell Inc. DELL S2721HGF 5GZWZ13" enable mode 1920x1080 position 0,0
+    output "Dell Inc. S2719DGF GXSM7P2" enable mode 1920x1080 position 1920,0
+    output "Dell Inc. DELL S2721HGF 65591H3" enable mode 1920x1080 position 3840,0
+}
+
+# Triple external + laptop
+profile triple-with-laptop {
+    output "Dell Inc. DELL S2721HGF 5GZWZ13" enable mode 1920x1080 position 0,0
+    output "Dell Inc. S2719DGF GXSM7P2" enable mode 1920x1080 position 1920,0
+    output "Dell Inc. DELL S2721HGF 65591H3" enable mode 1920x1080 position 3840,0
+    output eDP-1 enable scale 1.5 position 5760,0
+}
