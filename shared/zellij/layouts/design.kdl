@@ -1,0 +1,44 @@
+layout {
+    default_tab_template {
+        pane size=1 borderless=true {
+            plugin location="tab-bar"
+        }
+        pane split_direction="vertical" {
+            pane command="/home/sbatsche/.local/bin/broot-tab" size="20%"
+            children
+        }
+        pane size=2 borderless=true {
+            plugin location="status-bar"
+        }
+    }
+    tab name="claude" {
+        pane cwd="/home/sbatsche/projects/hexfusion/design"
+    }
+    tab name="piplet" {
+        pane cwd="/home/sbatsche/projects/hexfusion/piplet"
+    }
+    tab name="review" {
+        pane cwd="/home/sbatsche/projects/hexfusion/design"
+    }
+    tab name="claude2" {
+        pane cwd="/home/sbatsche/projects/hexfusion/design"
+    }
+    tab name="gie-proposal" {
+        pane cwd="/home/sbatsche/projects/hexfusion/design/work/llm-d/proposals"
+    }
+    tab name="claude3" {
+        pane cwd="/home/sbatsche/projects/hexfusion/design"
+    }
+    tab name="7" {
+        pane
+    }
+    tab name="8" {
+        pane
+    }
+    tab name="git" {
+        pane split_direction="vertical" {
+            pane command="/home/sbatsche/.local/bin/lazygit" cwd="/home/sbatsche/projects/hexfusion/design" size="60%"
+            pane cwd="/home/sbatsche/projects/hexfusion/design" size="40%"
+        }
+    }
+}

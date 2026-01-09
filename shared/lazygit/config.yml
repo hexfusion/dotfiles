@@ -1,0 +1,10 @@
+gui:
+  showCommandLog: false
+  showBottomLine: false
+  nerdFontsVersion: ""
+  screenMode: "half"
+  sidePanelWidth: 0.25
+git:
+  log:
+    showGraph: always
+  fetchAll: false

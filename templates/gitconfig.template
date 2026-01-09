@@ -1,0 +1,21 @@
+[user]
+	name = {{GIT_NAME}}
+	email = {{GIT_EMAIL}}
+{{#if GIT_SIGNING_KEY}}
+	signingkey = {{GIT_SIGNING_KEY}}
+{{/if}}
+[init]
+	defaultBranch = main
+[alias]
+	last = log -1
+	st = status
+	co = checkout
+	br = branch
+	ci = commit
+	lg = log --oneline --graph --decorate
+[core]
+	pager = less
+{{#if GIT_SIGNING_KEY}}
+[commit]
+	gpgsign = true
+{{/if}}

@@ -1,0 +1,5 @@
+#!/bin/bash
+# Open file in vim as a zellij floating pane
+FILE="$2"
+LINE="${1:-1}"
+exec "$HOME/.local/bin/zellij" run --floating --close-on-exit -x 5% -y 5% --width 90% --height 90% -- /usr/bin/vim "+$LINE" "$FILE"

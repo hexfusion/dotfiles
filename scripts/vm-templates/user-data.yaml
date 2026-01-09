@@ -1,0 +1,17 @@
+#cloud-config
+users:
+  - name: core
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    groups: wheel
+    ssh_authorized_keys:
+      - SSH_PUB_KEY
+
+ssh_pwauth: false
+disable_root: true
+
+hostname: VM_HOSTNAME
+
+# Enable serial console for headless access
+runcmd:
+  - systemctl enable --now serial-getty@ttyS0.service

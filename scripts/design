@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# design - Wrapper for design tooling
+#
+# Tooling lives in ~/tools/design/
+# Data lives in ~/work/design/ (default) or ~/dev/design/ (-d flag)
+
+TOOLS_DIR="$HOME/tools/design"
+WORK_DATA="$HOME/work/design"
+DEV_DATA="$HOME/dev/design"
+
+# Default to work
+DATA_DIR="$WORK_DATA"
+CONTEXT="work"
+
+usage() {
+    cat <<EOF
+Usage: design [options] <command> [args...]
+
+Options:
+    -w, --work      Use work design data (default)
+    -d, --dev       Use personal design data
+    -h, --help      Show this help
+
+Commands (passed to Makefile):
+    help            Show Makefile help
+    images          Generate PlantUML diagrams
+    docx            Convert markdown to DOCX
+    design          Create new design project
+    feature         Create new feature project
+    research        Create new research project
+    proposal        Create new proposal (non-code initiatives)
+    bug             Create new bug investigation
+    jira            Generate Jira-formatted output
+    list            List projects
+
+Examples:
+    design help
+    design images PROJECT=flightctl/grpc-gateway
+    design -d images PROJECT=simulation
+    design feature flightctl/new-feature
+    design -d design openenv/new-idea
+
+Current paths:
+    Tools:     $TOOLS_DIR
+    Work data: $WORK_DATA
+    Dev data:  $DEV_DATA
+EOF
+    exit 0
+}
+
+# Parse options
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -w|--work)
+            DATA_DIR="$WORK_DATA"
+            CONTEXT="work"
+            shift
+            ;;
+        -d|--dev)
+            DATA_DIR="$DEV_DATA"
+            CONTEXT="dev"
+            shift
+            ;;
+        -h|--help)
+            usage
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+# Check tools exist
+if [[ ! -f "$TOOLS_DIR/Makefile" ]]; then
+    echo "Error: Makefile not found at $TOOLS_DIR/Makefile"
+    echo "Run: git clone <design-tools-repo> ~/tools/design"
+    exit 1
+fi
+
+# Check data dir exists
+if [[ ! -d "$DATA_DIR" ]]; then
+    echo "Error: Data directory not found: $DATA_DIR"
+    exit 1
+fi
+
+# If no command, show help
+if [[ $# -eq 0 ]]; then
+    usage
+fi
+
+echo "[$CONTEXT] $DATA_DIR"
+echo ""
+
+# Run make from data dir, using tools Makefile
+cd "$DATA_DIR"
+make -f "$TOOLS_DIR/Makefile" TEMPLATES="$TOOLS_DIR/templates" "$@"

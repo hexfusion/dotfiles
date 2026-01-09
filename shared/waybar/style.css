@@ -1,0 +1,141 @@
+/* Waybar - Slim polybar-style */
+* {
+    font-family: "Noto Sans Mono", "Symbols Nerd Font Mono", monospace;
+    font-size: 11px;
+    min-height: 0;
+    padding: 0;
+    margin: 0;
+}
+
+window#waybar {
+    background-color: rgba(22, 32, 37, 0.85);
+    color: #cccccc;
+    border: none;
+}
+
+#workspaces button {
+    padding: 0 6px;
+    color: #888888;
+    background: #193a48;
+    border: none;
+    border-radius: 0;
+    margin: 0 1px;
+}
+
+#workspaces button:hover {
+    background: #294a58;
+}
+
+#workspaces button.focused {
+    color: #cccccc;
+    background: #294a58;
+}
+
+#workspaces button.urgent {
+    background: #BA2922;
+}
+
+#mode {
+    background: #193a48;
+    padding: 0 6px;
+}
+
+#clock,
+#battery,
+#cpu,
+#memory,
+#backlight,
+#network,
+#pulseaudio,
+#bluetooth,
+#tray {
+    padding: 0 6px;
+    color: #cccccc;
+}
+
+/* Separators between modules */
+#cpu, #custom-temp, #memory, #backlight, #battery, #clock, #network, #pulseaudio, #bluetooth {
+    border-left: 1px solid #444;
+}
+
+#custom-temp {
+    color: #8be9fd;
+}
+
+#custom-temp.critical {
+    color: #e53935;
+}
+
+#bluetooth {
+    color: #3b82f6;
+}
+
+#bluetooth.disabled {
+    color: #666;
+}
+
+/* Battery states */
+#battery {
+    color: #7cb342; /* green when full */
+}
+
+#battery.charging, #battery.plugged {
+    color: #7cb342;
+}
+
+#battery.good:not(.charging) {
+    color: #fdd835; /* yellow <75% */
+}
+
+#battery.warning:not(.charging) {
+    color: #ffa500; /* orange <50% */
+}
+
+#battery.low:not(.charging) {
+    color: #ff6b6b; /* light red <25% */
+}
+
+#battery.critical:not(.charging) {
+    color: #e53935; /* red <15% */
+    animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+    to { opacity: 0.3; }
+}
+
+#cpu {
+    color: #aaff77;
+}
+
+#memory {
+    color: #c0ca33;
+}
+
+#network {
+    color: #5294e2;
+}
+
+#network.disconnected {
+    color: #666;
+}
+
+#pulseaudio {
+    color: #f39c12;
+}
+
+#pulseaudio.muted {
+    color: #666;
+}
+
+#backlight {
+    color: #fdd835;
+}
+
+#tray {
+    padding: 0 8px;
+}
+
+#tray > .passive {
+    -gtk-icon-effect: dim;
+}

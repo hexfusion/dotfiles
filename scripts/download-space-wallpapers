@@ -1,0 +1,91 @@
+#!/bin/bash
+# Download high-resolution space wallpapers from NASA/ESA
+# All images are public domain or Creative Commons
+
+WALLPAPER_DIR="$HOME/Pictures/wallpapers"
+mkdir -p "$WALLPAPER_DIR"
+cd "$WALLPAPER_DIR"
+
+echo "Downloading space wallpapers to $WALLPAPER_DIR..."
+
+# ESA/Webb images (James Webb Space Telescope) - using large JPEGs
+WEBB_IMAGES=(
+    "weic2216a:pillars-creation-webb"
+    "weic2207a:cosmic-cliffs-carina"
+    "weic2218a:tarantula-nebula"
+    "weic2211a:cartwheel-galaxy"
+    "weic2212a:stephans-quintet"
+    "weic2219a:neptune-rings"
+    "weic2301a:pandora-cluster"
+    "weic2316a:rho-ophiuchi"
+    "weic2323b:ring-nebula"
+    "weic2410a:horsehead-nebula"
+    "weic2411a:crab-nebula"
+    "weic2415a:serpens-nebula"
+    "potw2438a:flaming-skull-nebula"
+    "potw2501a:ngc1559-spiral"
+)
+
+# ESA/Hubble images - using large JPEGs
+HUBBLE_IMAGES=(
+    "heic1509a:westerlund2-cluster"
+    "heic1608a:bubble-nebula"
+    "heic0601a:orion-nebula"
+    "heic0910i:sombrero-galaxy"
+    "heic0506a:whirlpool-galaxy-m51"
+    "heic1107a:spiral-galaxy-ngc1300"
+    "heic1501a:pillars-creation-visible"
+    "opo9901a:crab-nebula-hubble"
+)
+
+echo ""
+echo "=== Downloading Webb (JWST) Images ==="
+for entry in "${WEBB_IMAGES[@]}"; do
+    id="${entry%%:*}"
+    name="${entry##*:}"
+    url="https://esawebb.org/media/archives/images/large/${id}.jpg"
+    outfile="${name}.jpg"
+
+    if [[ -f "$outfile" ]]; then
+        echo "  [skip] $outfile already exists"
+    else
+        echo "  [get]  $outfile"
+        curl -sL "$url" -o "$outfile" 2>/dev/null
+        if [[ $? -eq 0 && -s "$outfile" ]]; then
+            echo "         $(du -h "$outfile" | cut -f1)"
+        else
+            echo "         [failed]"
+            rm -f "$outfile"
+        fi
+    fi
+done
+
+echo ""
+echo "=== Downloading Hubble Images ==="
+for entry in "${HUBBLE_IMAGES[@]}"; do
+    id="${entry%%:*}"
+    name="${entry##*:}"
+    url="https://esahubble.org/media/archives/images/large/${id}.jpg"
+    outfile="${name}.jpg"
+
+    if [[ -f "$outfile" ]]; then
+        echo "  [skip] $outfile already exists"
+    else
+        echo "  [get]  $outfile"
+        curl -sL "$url" -o "$outfile" 2>/dev/null
+        if [[ $? -eq 0 && -s "$outfile" ]]; then
+            echo "         $(du -h "$outfile" | cut -f1)"
+        else
+            echo "         [failed]"
+            rm -f "$outfile"
+        fi
+    fi
+done
+
+echo ""
+echo "=== Summary ==="
+count=$(ls -1 *.jpg *.png *.webp 2>/dev/null | wc -l)
+echo "Total wallpapers: $count"
+ls -lhS *.jpg *.png *.webp 2>/dev/null | head -10
+echo ""
+echo "Run 'random-wallpaper' or reload sway to see new wallpapers"

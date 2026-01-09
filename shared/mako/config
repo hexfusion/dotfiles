@@ -1,0 +1,28 @@
+# Mako notification daemon config
+font=Noto Sans Mono 11
+background-color=#1e1e20ee
+text-color=#ffffff
+border-color=#56737a
+border-size=2
+border-radius=4
+padding=12
+margin=12
+width=350
+height=150
+default-timeout=5000
+ignore-timeout=0
+max-visible=3
+layer=overlay
+anchor=top-right
+
+[urgency=low]
+border-color=#2c5159
+default-timeout=3000
+
+[urgency=high]
+border-color=#eb4d4b
+default-timeout=10000
+
+[urgency=critical]
+border-color=#eb4d4b
+default-timeout=0

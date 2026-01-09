@@ -1,0 +1,477 @@
+#!/bin/bash
+set -euo pipefail
+
+# VM CLI Tool - Simple libvirt VM orchestration with cloud-init
+# Usage: vm <command> [options]
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+IMAGES_DIR="${HOME}/.local/share/vm-images"
+INSTANCES_DIR="${HOME}/.local/share/vm-instances"
+SSH_PUB_KEY_FILE="${HOME}/.ssh/id_ed25519.pub"
+LIBVIRT_URI="qemu:///system"
+
+# Templates: use user location or local dev path
+if [[ -d "${HOME}/.local/share/vm/templates/cloud-init" ]]; then
+    TEMPLATES_DIR="${HOME}/.local/share/vm/templates/cloud-init"
+else
+    TEMPLATES_DIR="${SCRIPT_DIR}/templates/cloud-init"
+fi
+
+# RHEL Subscription Manager (set via environment variables)
+# Export RHEL_ORG and RHEL_ACTIVATION_KEY in your shell profile for RHEL VM registration
+RHEL_ORG="${RHEL_ORG:-}"
+RHEL_ACTIVATION_KEY="${RHEL_ACTIVATION_KEY:-}"
+
+# Defaults
+DEFAULT_MEMORY=8192
+DEFAULT_CPUS=4
+DEFAULT_DISK_SIZE="50G"
+DEFAULT_NETWORK="default"
+
+usage() {
+    cat <<EOF
+VM CLI Tool - Simple libvirt VM orchestration
+
+Usage: vm <command> [options]
+
+Commands:
+    create <template> --name <name>   Create a new VM from template
+    list                              List all VMs
+    start <name>                      Start a VM
+    stop <name>                       Stop a VM
+    reset <name>                      Reset VM disk to pristine state
+    delete <name>                     Delete a VM and its disk
+    ssh <name>                        SSH to VM as core user
+    console <name>                    Attach to VM serial console
+    ip <name>                         Get VM IP address
+    images                            List available base images
+
+Create options:
+    --name <name>       VM name (required)
+    --memory <MB>       Memory in MB (default: ${DEFAULT_MEMORY})
+    --cpus <n>          Number of CPUs (default: ${DEFAULT_CPUS})
+    --network <net>     Libvirt network (default: ${DEFAULT_NETWORK})
+
+Examples:
+    vm create rhel9.7 --name my-test-vm
+    vm create rhel9.7 --name dev-box --memory 4096 --cpus 4
+    vm ssh my-test-vm
+    vm delete my-test-vm
+EOF
+}
+
+error() {
+    echo "Error: $1" >&2
+    exit 1
+}
+
+info() {
+    echo "==> $1"
+}
+
+# Check if template is RHEL-based
+is_rhel() {
+    local template="$1"
+    [[ "$template" == rhel* ]]
+}
+
+# Wait for VM to be SSH-accessible
+wait_for_ssh() {
+    local name="$1"
+    local max_attempts="${2:-30}"
+    local attempt=0
+
+    info "Waiting for VM to be accessible..."
+    while [[ $attempt -lt $max_attempts ]]; do
+        local ip
+        ip=$(cmd_ip "$name")
+        if [[ -n "$ip" ]] && ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=2 "core@${ip}" "true" 2>/dev/null; then
+            return 0
+        fi
+        sleep 2
+        ((attempt++))
+    done
+    return 1
+}
+
+# Register RHEL VM with subscription-manager
+rhel_register() {
+    local name="$1"
+    local ip
+    ip=$(cmd_ip "$name")
+
+    info "Registering with Red Hat Subscription Manager..."
+    ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "core@${ip}" \
+        "sudo subscription-manager register --activationkey '${RHEL_ACTIVATION_KEY}' --org '${RHEL_ORG}'" || {
+        echo "Warning: RHEL registration failed" >&2
+        return 1
+    }
+    info "RHEL registration complete"
+}
+
+# Unregister RHEL VM from subscription-manager
+rhel_unregister() {
+    local name="$1"
+    local ip
+    ip=$(cmd_ip "$name")
+
+    if [[ -z "$ip" ]]; then
+        # VM not running, try to start it briefly
+        info "Starting VM to unregister..."
+        virsh --connect "$LIBVIRT_URI" start "$name" 2>/dev/null || return 0
+        sleep 10
+        ip=$(cmd_ip "$name")
+    fi
+
+    if [[ -n "$ip" ]]; then
+        info "Unregistering from Red Hat Subscription Manager..."
+        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 "core@${ip}" \
+            "sudo subscription-manager unregister" 2>/dev/null || true
+    fi
+}
+
+# List available base images
+cmd_images() {
+    echo "Available base images in ${IMAGES_DIR}:"
+    echo ""
+    if [[ -d "${IMAGES_DIR}" ]]; then
+        for img in "${IMAGES_DIR}"/*.qcow2; do
+            if [[ -f "$img" ]]; then
+                name=$(basename "$img" .qcow2)
+                size=$(du -h "$img" | cut -f1)
+                echo "  ${name}  (${size})"
+            fi
+        done
+    else
+        echo "  (no images found)"
+    fi
+    echo ""
+    echo "Add QCOW2 cloud images to: ${IMAGES_DIR}/"
+}
+
+# List all VMs
+cmd_list() {
+    virsh --connect "$LIBVIRT_URI" list --all
+}
+
+# Get VM IP address
+cmd_ip() {
+    local name="$1"
+    virsh --connect "$LIBVIRT_URI" domifaddr "$name" 2>/dev/null | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -1
+}
+
+# SSH to VM
+cmd_ssh() {
+    local name="$1"
+    shift
+    local ip
+    ip=$(cmd_ip "$name")
+    if [[ -z "$ip" ]]; then
+        error "Could not get IP for VM '$name'. Is it running?"
+    fi
+    info "Connecting to ${name} (${ip})..."
+    ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "core@${ip}" "$@"
+}
+
+# Attach to console
+cmd_console() {
+    local name="$1"
+    info "Attaching to console (Ctrl+] to exit)..."
+    virsh --connect "$LIBVIRT_URI" console "$name"
+}
+
+# Start VM
+cmd_start() {
+    local name="$1"
+    info "Starting VM: ${name}"
+    virsh --connect "$LIBVIRT_URI" start "$name"
+}
+
+# Stop VM
+cmd_stop() {
+    local name="$1"
+    info "Stopping VM: ${name}"
+    virsh --connect "$LIBVIRT_URI" shutdown "$name" || virsh --connect "$LIBVIRT_URI" destroy "$name"
+}
+
+# Delete VM
+cmd_delete() {
+    local name="$1"
+    local instance_dir="${INSTANCES_DIR}/${name}"
+
+    info "Deleting VM: ${name}"
+
+    # Unregister RHEL VMs first
+    local template_file="${instance_dir}/template"
+    if [[ -f "$template_file" ]]; then
+        local template
+        template=$(cat "$template_file")
+        if is_rhel "$template"; then
+            rhel_unregister "$name"
+        fi
+    fi
+
+    # Stop if running
+    virsh --connect "$LIBVIRT_URI" destroy "$name" 2>/dev/null || true
+
+    # Undefine the VM
+    virsh --connect "$LIBVIRT_URI" undefine "$name" --remove-all-storage 2>/dev/null || virsh --connect "$LIBVIRT_URI" undefine "$name" 2>/dev/null || true
+
+    # Remove instance directory
+    if [[ -d "$instance_dir" ]]; then
+        rm -rf "$instance_dir"
+        info "Removed instance directory: ${instance_dir}"
+    fi
+
+    info "VM '${name}' deleted"
+}
+
+# Reset VM to pristine state (recreate disk from base image)
+cmd_reset() {
+    local name="$1"
+    local instance_dir="${INSTANCES_DIR}/${name}"
+    local disk="${instance_dir}/${name}.qcow2"
+
+    # Check VM exists
+    if ! virsh --connect "$LIBVIRT_URI" dominfo "$name" &>/dev/null; then
+        error "VM '${name}' does not exist"
+    fi
+
+    info "Resetting VM: ${name}"
+
+    # Stop VM if running (must do this before accessing disk)
+    info "Stopping VM..."
+    virsh --connect "$LIBVIRT_URI" destroy "$name" 2>/dev/null || true
+    sleep 1
+
+    # Get the backing file from current disk
+    local backing_file
+    backing_file=$(qemu-img info "$disk" 2>/dev/null | grep "backing file:" | sed 's/backing file: //')
+    if [[ -z "$backing_file" ]]; then
+        error "Could not determine backing file for ${disk}"
+    fi
+    info "  Backing file: ${backing_file}"
+
+    # Remove old disk and create fresh overlay
+    info "Recreating disk from base image..."
+    rm -f "$disk"
+    qemu-img create -f qcow2 -F qcow2 -b "$backing_file" "$disk"
+    qemu-img resize "$disk" "${DEFAULT_DISK_SIZE}"
+
+    # Start VM
+    info "Starting VM..."
+    virsh --connect "$LIBVIRT_URI" start "$name"
+
+    info "VM '${name}' reset to pristine state!"
+
+    # Re-register RHEL VMs
+    local template_file="${instance_dir}/template"
+    if [[ -f "$template_file" ]]; then
+        local template
+        template=$(cat "$template_file")
+        if is_rhel "$template"; then
+            if wait_for_ssh "$name"; then
+                rhel_register "$name"
+            else
+                info "Warning: Could not reach VM for RHEL registration"
+            fi
+        fi
+    fi
+
+    info ""
+    info "VM ready:"
+    info "  vm ssh ${name}"
+}
+
+# Create VM
+cmd_create() {
+    local template=""
+    local name=""
+    local memory="${DEFAULT_MEMORY}"
+    local cpus="${DEFAULT_CPUS}"
+    local network="${DEFAULT_NETWORK}"
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --name)
+                name="$2"
+                shift 2
+                ;;
+            --memory)
+                memory="$2"
+                shift 2
+                ;;
+            --cpus)
+                cpus="$2"
+                shift 2
+                ;;
+            --network)
+                network="$2"
+                shift 2
+                ;;
+            -*)
+                error "Unknown option: $1"
+                ;;
+            *)
+                if [[ -z "$template" ]]; then
+                    template="$1"
+                    shift
+                else
+                    error "Unexpected argument: $1"
+                fi
+                ;;
+        esac
+    done
+
+    # Validate
+    [[ -z "$template" ]] && error "Template required. Usage: vm create <template> --name <name>"
+    [[ -z "$name" ]] && error "--name required"
+
+    local base_image="${IMAGES_DIR}/${template}.qcow2"
+    [[ -f "$base_image" ]] || error "Base image not found: ${base_image}"
+
+    [[ -f "$SSH_PUB_KEY_FILE" ]] || error "SSH public key not found: ${SSH_PUB_KEY_FILE}"
+
+    # Check if VM already exists
+    if virsh --connect "$LIBVIRT_URI" dominfo "$name" &>/dev/null; then
+        error "VM '${name}' already exists"
+    fi
+
+    local instance_dir="${INSTANCES_DIR}/${name}"
+    local disk="${instance_dir}/${name}.qcow2"
+    local cidata_iso="${instance_dir}/cidata.iso"
+    local user_data="${instance_dir}/user-data"
+    local meta_data="${instance_dir}/meta-data"
+
+    info "Creating VM: ${name}"
+    info "  Template: ${template}"
+    info "  Memory: ${memory}MB"
+    info "  CPUs: ${cpus}"
+    info "  Disk: ${DEFAULT_DISK_SIZE}"
+    info "  Network: ${network}"
+
+    # Create instance directory
+    mkdir -p "$instance_dir"
+
+    # Store template metadata
+    echo "$template" > "${instance_dir}/template"
+
+    # Create overlay disk (copy-on-write from base)
+    info "Creating disk overlay..."
+    qemu-img create -f qcow2 -F qcow2 -b "$base_image" "$disk"
+
+    # Resize disk
+    qemu-img resize "$disk" "${DEFAULT_DISK_SIZE}"
+
+    # Generate cloud-init files
+    info "Generating cloud-init configuration..."
+    local ssh_key
+    ssh_key=$(cat "$SSH_PUB_KEY_FILE")
+    local instance_id
+    instance_id="i-$(date +%s)-${name}"
+
+    sed -e "s|SSH_PUB_KEY|${ssh_key}|g" \
+        -e "s|VM_HOSTNAME|${name}|g" \
+        "${TEMPLATES_DIR}/user-data.yaml" > "$user_data"
+
+    sed -e "s|VM_INSTANCE_ID|${instance_id}|g" \
+        -e "s|VM_HOSTNAME|${name}|g" \
+        "${TEMPLATES_DIR}/meta-data.yaml" > "$meta_data"
+
+    # Create cloud-init ISO
+    info "Creating cloud-init ISO..."
+    mkisofs -output "$cidata_iso" \
+        -volid cidata \
+        -joliet -rock \
+        "$user_data" "$meta_data"
+
+    # Create VM with virt-install
+    info "Creating VM with virt-install..."
+    virt-install \
+        --connect "$LIBVIRT_URI" \
+        --name "$name" \
+        --memory "$memory" \
+        --vcpus "$cpus" \
+        --disk "path=${disk},format=qcow2" \
+        --disk "path=${cidata_iso},device=cdrom" \
+        --os-variant rhel9-unknown \
+        --network "network=${network}" \
+        --graphics none \
+        --console pty,target_type=serial \
+        --import \
+        --noautoconsole
+
+    info "VM '${name}' created successfully!"
+
+    # Register RHEL VMs
+    if is_rhel "$template"; then
+        if wait_for_ssh "$name"; then
+            rhel_register "$name"
+        else
+            info "Warning: Could not reach VM for RHEL registration"
+            info "Run manually: vm ssh ${name} then: sudo subscription-manager register --activationkey '${RHEL_ACTIVATION_KEY}' --org '${RHEL_ORG}'"
+        fi
+    fi
+
+    info ""
+    info "VM ready:"
+    info "  vm ssh ${name}"
+    info "  vm console ${name}"
+}
+
+# Main
+main() {
+    [[ $# -lt 1 ]] && { usage; exit 0; }
+
+    local cmd="$1"
+    shift
+
+    case "$cmd" in
+        create)
+            cmd_create "$@"
+            ;;
+        list)
+            cmd_list
+            ;;
+        start)
+            [[ $# -lt 1 ]] && error "VM name required"
+            cmd_start "$1"
+            ;;
+        stop)
+            [[ $# -lt 1 ]] && error "VM name required"
+            cmd_stop "$1"
+            ;;
+        delete)
+            [[ $# -lt 1 ]] && error "VM name required"
+            cmd_delete "$1"
+            ;;
+        reset)
+            [[ $# -lt 1 ]] && error "VM name required"
+            cmd_reset "$1"
+            ;;
+        ssh)
+            [[ $# -lt 1 ]] && error "VM name required"
+            cmd_ssh "$@"
+            ;;
+        console)
+            [[ $# -lt 1 ]] && error "VM name required"
+            cmd_console "$1"
+            ;;
+        ip)
+            [[ $# -lt 1 ]] && error "VM name required"
+            cmd_ip "$1"
+            ;;
+        images)
+            cmd_images
+            ;;
+        help|--help|-h)
+            usage
+            ;;
+        *)
+            error "Unknown command: ${cmd}"
+            ;;
+    esac
+}
+
+main "$@"

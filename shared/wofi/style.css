@@ -1,0 +1,59 @@
+/* Minimal wofi - muted */
+* {
+    font-family: monospace;
+    font-size: 12px;
+}
+
+window {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+}
+
+#input {
+    background: #1a1a1a;
+    color: #888;
+    border: none;
+    border-bottom: 1px solid #2a2a2a;
+    padding: 8px;
+}
+
+#inner-box {
+    background: transparent;
+}
+
+#outer-box {
+    margin: 0;
+    padding: 0;
+}
+
+#entry {
+    padding: 4px 8px;
+    border-bottom: 1px solid #333;
+}
+
+#entry:nth-child(odd) {
+    border-bottom-color: #3a3a4a;
+}
+
+#entry:nth-child(even) {
+    border-bottom-color: #3a4a3a;
+}
+
+#entry:selected {
+    background: #252525;
+}
+
+#text {
+    color: #777;
+}
+
+#text:selected {
+    color: #aaa;
+}
+
+#img {
+    opacity: 0.6;
+    margin-right: 8px;
+    min-width: 16px;
+    min-height: 16px;
+}

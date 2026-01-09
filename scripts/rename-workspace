@@ -1,0 +1,4 @@
+#!/bin/bash
+# Rename current workspace
+name=$(wofi --dmenu -p "Rename workspace:")
+[ -n "$name" ] && swaymsg "rename workspace to \"$name\""
