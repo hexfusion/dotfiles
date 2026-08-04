@@ -28,8 +28,33 @@ verbs: [
         invocation: edit
         shortcut: e
         key: enter
-        apply_to: text_file
-        execution: "/home/sbatsche/.local/bin/zellij-edit {line} {file}"
+        apply_to: file
+        execution: "/home/sbatsche/.local/bin/workbench edit {line} {file}"
+        leave_broot: false
+    }
+
+    // Override broot's internal open — route everything through zellij-edit
+    // This handles mouse double-click and the :open command
+    {
+        invocation: open
+        apply_to: file
+        execution: "/home/sbatsche/.local/bin/workbench edit {line} {file}"
+        leave_broot: false
+    }
+
+    // Disable default q to quit — conflicts with vim :q muscle memory
+    // Quit broot with Ctrl-q instead
+    {
+        invocation: quit
+        key: ctrl-q
+        internal: quit
+    }
+
+    // Override :q so it doesn't quit broot (vim muscle memory)
+    // :q now does nothing. Use Ctrl-q to actually quit.
+    {
+        invocation: q
+        internal: no_sort
         leave_broot: false
     }
 

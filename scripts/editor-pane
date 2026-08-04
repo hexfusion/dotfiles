@@ -1,0 +1,8 @@
+#!/bin/bash
+# editor-pane: persistent vim instance for workbench
+# Vim restarts automatically if you :q or :wq.
+# zellij-edit sends :e commands to open files.
+
+while true; do
+    vim -c "echo 'Editor ready. Files from broot open here.'"
+done

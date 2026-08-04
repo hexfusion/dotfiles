@@ -17,8 +17,13 @@ else
     TEMPLATES_DIR="${SCRIPT_DIR}/templates/cloud-init"
 fi
 
-# RHEL Subscription Manager (set via environment variables)
-# Export RHEL_ORG and RHEL_ACTIVATION_KEY in your shell profile for RHEL VM registration
+# RHEL Subscription Manager
+# Credentials are NOT stored here: this script is tracked in a public dotfiles
+# repo. Put them in ~/.config/vm/credentials.env (mode 0600) or export them.
+VM_CREDENTIALS="${XDG_CONFIG_HOME:-$HOME/.config}/vm/credentials.env"
+# shellcheck source=/dev/null
+[[ -r "$VM_CREDENTIALS" ]] && source "$VM_CREDENTIALS"
+
 RHEL_ORG="${RHEL_ORG:-}"
 RHEL_ACTIVATION_KEY="${RHEL_ACTIVATION_KEY:-}"
 

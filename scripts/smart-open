@@ -1,0 +1,51 @@
+#!/bin/bash
+# smart-open: open files by type
+#   code/text -> vim (in terminal, passes all args through)
+#   images    -> loupe
+#   svg       -> loupe
+#   pdf       -> zathura (fallback: loupe)
+#   html      -> google-chrome
+#   video/audio -> xdg-open
+#   Sway for_window rules handle floating (see ~/.config/sway/config)
+
+# Find the actual file among the args (skip vim flags like +42)
+FILE=""
+for arg in "$@"; do
+    if [ -e "$arg" ]; then
+        FILE="$arg"
+        break
+    fi
+done
+
+if [ -z "$FILE" ]; then
+    exec vim "$@"
+fi
+
+EXT="${FILE##*.}"
+EXT="${EXT,,}" # lowercase
+
+case "$EXT" in
+    svg|png|jpg|jpeg|gif|bmp|webp|tiff|tif|ico)
+        loupe "$FILE" &
+        disown
+        ;;
+    pdf)
+        if command -v zathura &>/dev/null; then
+            zathura "$FILE" &
+        else
+            loupe "$FILE" &
+        fi
+        disown
+        ;;
+    html|htm)
+        google-chrome "$FILE" &
+        disown
+        ;;
+    mp4|mkv|avi|mov|mp3|flac|wav|ogg)
+        xdg-open "$FILE" &
+        disown
+        ;;
+    *)
+        exec vim "$@"
+        ;;
+esac

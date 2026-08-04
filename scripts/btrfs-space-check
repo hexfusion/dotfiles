@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# btrfs-space-check — warn before the btrfs root filesystem hits the
+# metadata-exhaustion / zero-unallocated wedge that blocks all writes
+# (ENOSPC despite df showing free space).
+#
+# Root cause it guards against: snapshots/data pin every chunk, metadata
+# fills (DUP, so 2x cost), and btrfs can't allocate a new metadata chunk.
+# Fix when it fires: prune snapper snapshots + `btrfs balance start -dusage=50 /`.
+#
+# Installed by Claude. Runs hourly via the systemd --user timer of the same name.
+set -euo pipefail
+
+MOUNT=/
+UNALLOC_MIN_GIB=10   # warn if Device unallocated drops below this
+META_PCT_MAX=85      # warn if Metadata usage exceeds this percent
+
+usage=$(btrfs filesystem usage "$MOUNT" 2>/dev/null) || exit 0
+
+# --- Device unallocated -> MiB -------------------------------------------
+unalloc_line=$(grep -i 'Device unallocated' <<<"$usage" | head -1)
+unalloc_val=$(sed -E 's/.*:[[:space:]]*([0-9.]+)([KMGT]i?B).*/\1/' <<<"$unalloc_line")
+unalloc_unit=$(sed -E 's/.*:[[:space:]]*[0-9.]+([KMGT]i?B).*/\1/' <<<"$unalloc_line")
+to_mib() {
+  awk -v v="$1" -v u="$2" 'BEGIN{
+    if(u=="B")   printf "%.2f", v/1048576;
+    else if(u=="KiB") printf "%.2f", v/1024;
+    else if(u=="MiB") printf "%.2f", v;
+    else if(u=="GiB") printf "%.2f", v*1024;
+    else if(u=="TiB") printf "%.2f", v*1048576;
+    else printf "999999";
+  }'
+}
+unalloc_mib=$(to_mib "$unalloc_val" "$unalloc_unit")
+unalloc_min_mib=$((UNALLOC_MIN_GIB * 1024))
+
+# --- Metadata usage percent ----------------------------------------------
+meta_pct=$(grep -iE '^Metadata' <<<"$usage" | grep -oE '\([0-9.]+%\)' | grep -oE '[0-9.]+' | head -1)
+meta_pct=${meta_pct:-0}
+
+low_unalloc=$(awk -v a="$unalloc_mib" -v b="$unalloc_min_mib" 'BEGIN{print (a<b)?1:0}')
+high_meta=$(awk -v a="$meta_pct" -v b="$META_PCT_MAX" 'BEGIN{print (a>b)?1:0}')
+
+if [ "$low_unalloc" = 1 ] || [ "$high_meta" = 1 ]; then
+  msg="btrfs / headroom low: unallocated=${unalloc_val}${unalloc_unit} (min ${UNALLOC_MIN_GIB}GiB), metadata=${meta_pct}% (max ${META_PCT_MAX}%). Prune snapper snapshots and run: sudo btrfs balance start -dusage=50 /"
+  logger -t btrfs-space-check -p daemon.warning "$msg"
+  notify-send -u critical -a "btrfs-space-check" "btrfs disk headroom low" "$msg" 2>/dev/null || true
+else
+  logger -t btrfs-space-check -p daemon.info "ok: unallocated=${unalloc_val}${unalloc_unit}, metadata=${meta_pct}%"
+fi
+exit 0

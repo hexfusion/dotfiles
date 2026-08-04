@@ -1,5 +1,56 @@
 #!/bin/bash
-# Open file in vim as a zellij floating pane
+# zellij-edit: dispatch file opens from broot
+#   code/text -> open in editor pane vim via write-chars
+#   images/pdf -> floating GUI viewer (sway handles float + size)
+#
+# Usage: zellij-edit [line] <file>
+
 FILE="$2"
 LINE="${1:-1}"
-exec "$HOME/.local/bin/zellij" run --floating --close-on-exit -x 5% -y 5% --width 90% --height 90% -- /usr/bin/vim "+$LINE" "$FILE"
+
+if [ -z "$FILE" ]; then
+    FILE="$1"
+    LINE="1"
+fi
+
+[[ "$FILE" != /* ]] && FILE="$(pwd)/$FILE"
+
+EXT="${FILE##*.}"
+EXT="${EXT,,}"
+
+case "$EXT" in
+    svg|png|jpg|jpeg|gif|bmp|webp|tiff|tif|ico)
+        loupe "$FILE" &
+        disown
+        ;;
+    pdf)
+        if command -v zathura &>/dev/null; then
+            zathura "$FILE" &
+        else
+            loupe "$FILE" &
+        fi
+        disown
+        ;;
+    html|htm)
+        google-chrome "$FILE" &
+        disown
+        ;;
+    *)
+        PANE_ID=$(zellij action list-panes 2>/dev/null \
+            | grep "editor" \
+            | head -1 \
+            | awk '{print $1}')
+
+        if [ -n "$PANE_ID" ]; then
+            # Send Escape (exit insert mode if in vim, harmless otherwise)
+            zellij action write-chars --pane-id "$PANE_ID" $'\x1b'
+            sleep 0.1
+            # Send :e to open file in vim
+            zellij action write-chars --pane-id "$PANE_ID" ":e +$LINE $FILE"$'\n'
+        else
+            zellij run --floating --close-on-exit \
+                -x 5% -y 5% --width 90% --height 90% \
+                -- /usr/bin/vim "+$LINE" "$FILE"
+        fi
+        ;;
+esac

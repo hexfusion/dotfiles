@@ -1,0 +1,4 @@
+#!/bin/bash
+# Screenshot with annotation for Sway
+# Uses slurp for region selection, grim for capture, swappy for annotation
+grim -g "$(slurp)" - | swappy -f -

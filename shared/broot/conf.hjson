@@ -26,6 +26,8 @@
 #
 # default_flags:
 
+show_staging_area: false
+
 ###############################################################
 # Terminal's title
 # If you want the terminal's title to be updated when you change
@@ -167,10 +169,55 @@ special_paths: {
 # uncomment and modify the next section if you want to color
 # file name depending on their extension
 #
-# ext_colors: {
-#     png: rgb(255, 128, 75)
-#     rs: yellow
-# }
+ext_colors: {
+    // high-volume types — each gets a distinct bright color
+    md: "rgb(100, 180, 255)"        // bright blue — Markdown
+    yaml: "rgb(180, 130, 255)"      // bright violet — YAML
+    yml: "rgb(180, 130, 255)"       // bright violet — YAML
+    go: "rgb(0, 220, 200)"          // bright cyan — Go
+    puml: "rgb(255, 80, 180)"       // bright pink — PlantUML
+    sh: "rgb(255, 210, 0)"          // bright yellow — Shell
+    py: "rgb(80, 220, 80)"          // bright green — Python
+    pdf: "rgb(255, 80, 80)"         // bright red — PDF
+
+    // other source
+    rs: "rgb(255, 140, 50)"         // bright orange — Rust
+    js: "rgb(255, 220, 60)"         // bright gold — JavaScript
+    ts: "rgb(255, 220, 60)"         // bright gold — TypeScript
+    c: "rgb(180, 190, 210)"         // bright silver — C
+    h: "rgb(180, 190, 210)"         // bright silver — headers
+    cpp: "rgb(180, 190, 210)"       // bright silver — C++
+
+    // markup & docs
+    txt: "rgb(170, 180, 190)"       // light gray — plain text
+    html: "rgb(255, 140, 50)"       // bright orange
+
+    // config (not yaml)
+    toml: "rgb(180, 130, 255)"      // bright violet
+    json: "rgb(180, 130, 255)"      // bright violet
+    hjson: "rgb(180, 130, 255)"     // bright violet
+
+    // shell (other)
+    bash: "rgb(255, 210, 0)"        // bright yellow
+    zsh: "rgb(255, 210, 0)"         // bright yellow
+
+    // images
+    png: "rgb(255, 80, 180)"        // bright pink
+    jpg: "rgb(255, 80, 180)"        // bright pink
+    jpeg: "rgb(255, 80, 180)"       // bright pink
+    svg: "rgb(255, 80, 180)"        // bright pink
+    gif: "rgb(255, 80, 180)"        // bright pink
+
+    // archives
+    tar: "rgb(255, 80, 80)"         // bright red
+    gz: "rgb(255, 80, 80)"          // bright red
+    zip: "rgb(255, 80, 80)"         // bright red
+    xz: "rgb(255, 80, 80)"          // bright red
+
+    // containers & k8s
+    Dockerfile: "rgb(0, 220, 200)"  // bright cyan
+    proto: "rgb(0, 220, 200)"       // bright cyan
+}
 
 ###############################################################
 # Max file size for content search
@@ -282,12 +329,12 @@ imports: [
             unknown
         ]
         # (un)comment to choose your preferred skin
-        file: skins/dark-blue.hjson
+        //file: skins/dark-blue.hjson
         //file: skins/catppuccin-macchiato.hjson
         //file: skins/catppuccin-mocha.hjson
         //file: skins/dark-gruvbox.hjson
         //file: skins/dark-orange.hjson
-        //file: skins/solarized-dark.hjson
+        file: skins/solarized-dark.hjson
     }
 
     # This skin is imported when your terminal is light

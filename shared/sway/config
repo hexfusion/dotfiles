@@ -71,6 +71,12 @@ input type:touchpad {
     middle_emulation enabled
 }
 
+# Ploopy Nano 2 trackball - flat accel + slower for thumb precision
+input "20547:19685:Ploopy_Corporation_Ploopy_Nano_2_Trackball_Mouse" {
+    accel_profile flat
+    pointer_accel -0.5
+}
+
 ### Key bindings - Core apps (from your i3)
 bindsym $mod+Return exec $term
 bindsym $mod+b exec $browser
@@ -78,7 +84,7 @@ bindsym $mod+t exec $editor
 bindsym $mod+m exec $filemanager
 bindsym $mod+o exec $term -e gh dash
 bindsym $mod+n exec google-chrome --app=https://play.nugs.net
-bindsym $mod+z exec ~/.local/bin/zd
+bindsym $mod+z exec /home/sbatsche/.local/bin/workbench launch
 bindsym $mod+Shift+q kill
 
 # App launcher (Super+W like your rofi setup)
@@ -233,6 +239,8 @@ for_window [app_id="thunar" title="File Operation Progress"] floating enable
 for_window [window_role="pop-up"] floating enable
 for_window [window_role="dialog"] floating enable
 for_window [window_type="dialog"] floating enable
+for_window [app_id="org.gnome.Loupe"] floating enable, resize set width 80 ppt height 85 ppt
+for_window [app_id="org.pwmt.zathura"] floating enable, resize set width 40 ppt height 95 ppt, focus
 
 ### Startup
 exec_always sh -c "pkill -x waybar; waybar"

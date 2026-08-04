@@ -1,7 +1,2 @@
 #!/bin/bash
-ZELLIJ="$HOME/.local/bin/zellij"
-LAYOUT="$HOME/.config/zellij/layouts/design.kdl"
-# Clean up dead sessions first
-"$ZELLIJ" delete-session design --force 2>/dev/null
-# Attach if alive, otherwise create new
-exec foot -e bash -c "\"$ZELLIJ\" attach design 2>/dev/null || \"$ZELLIJ\" -n \"$LAYOUT\" -s design"
+exec foot -e workbench launch

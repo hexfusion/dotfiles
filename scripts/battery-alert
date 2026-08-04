@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Low-battery notifier: warns once at <=10% and once at <=5% per discharge
+# cycle. State resets when charging. Run from battery-alert.timer.
+
+# Locate the battery dynamically. Framework 16 exposes BAT1, ThinkPads
+# typically BAT0, so do not hardcode either.
+BAT=""
+for candidate in /sys/class/power_supply/BAT*; do
+    if [ -r "$candidate/capacity" ]; then
+        BAT="$candidate"
+        break
+    fi
+done
+
+STATE_DIR="${XDG_RUNTIME_DIR:-/tmp}/battery-alert"
+mkdir -p "$STATE_DIR"
+
+[ -n "$BAT" ] && [ -r "$BAT/capacity" ] || exit 0
+capacity=$(<"$BAT/capacity")
+status=$(<"$BAT/status")
+
+# On AC or charging: clear fired flags and exit
+if [ "$status" != "Discharging" ]; then
+    rm -f "$STATE_DIR/fired-10" "$STATE_DIR/fired-5"
+    exit 0
+fi
+
+if [ "$capacity" -le 5 ] && [ ! -e "$STATE_DIR/fired-5" ]; then
+    touch "$STATE_DIR/fired-5"
+    notify-send -u critical -t 0 -i battery-caution \
+        "Battery critical: ${capacity}%" \
+        "Plug in now. System will emergency-suspend soon and die in s2idle."
+elif [ "$capacity" -le 10 ] && [ ! -e "$STATE_DIR/fired-10" ]; then
+    touch "$STATE_DIR/fired-10"
+    notify-send -u critical -i battery-low \
+        "Battery low: ${capacity}%" \
+        "Plug in soon."
+fi

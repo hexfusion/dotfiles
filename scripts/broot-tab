@@ -1,43 +1,33 @@
 #!/bin/bash
-# broot-tab: persistent broot per zellij tab
-export EDITOR=vim
-export VISUAL=vim
+# broot-tab: workspace-scoped broot per zellij tab
+# Usage: broot-tab [workspace-name]
+# Reads broot_root from ~/.config/workbench/workspaces.yaml
+# Falls back to ~/projects if workspace not found
+
+export EDITOR=/home/sbatsche/.local/bin/zellij-edit
+export VISUAL="$EDITOR"
 export PATH="$HOME/.local/bin:$PATH"
 
 BROOT="$HOME/.local/bin/broot"
-STATE_FILE="$HOME/.config/zellij/broot-dirs"
-mkdir -p "$(dirname "$STATE_FILE")"
-touch "$STATE_FILE"
+CONFIG="$HOME/.config/workbench/workspaces.yaml"
+DEFAULT_ROOT="$HOME/projects"
 
-get_tab_name() {
-    "$HOME/.local/bin/zellij" action dump-layout 2>/dev/null \
-        | grep 'focus=true' \
-        | head -1 \
-        | sed 's/.*name="\([^"]*\)".*/\1/'
+TAB_NAME="$1"
+export WORKBENCH_TAB="$TAB_NAME"
+
+get_broot_root() {
+    local tab="$1"
+    if [ -n "$tab" ] && [ -f "$CONFIG" ]; then
+        local root
+        root=$(yq -r ".workspaces.\"$tab\".broot_root // .defaults.broot_root // \"\"" "$CONFIG" 2>/dev/null)
+        root="${root/#\~/$HOME}"
+        if [ -n "$root" ] && [ -d "$root" ]; then
+            echo "$root"
+            return
+        fi
+    fi
+    echo "$DEFAULT_ROOT"
 }
 
-tab_name=$(get_tab_name)
-saved_dir=$(grep "^${tab_name}	" "$STATE_FILE" 2>/dev/null | tail -1 | cut -f2)
-
-start_dir="${saved_dir:-$HOME/projects}"
-[ ! -d "$start_dir" ] && start_dir="$HOME"
-
-while true; do
-    tmpfile=$(mktemp)
-    "$BROOT" "$start_dir" --outcmd "$tmpfile"
-
-    if [ -s "$tmpfile" ]; then
-        new_dir=$(sed 's/^cd //' "$tmpfile" | tr -d "'\"")
-    else
-        new_dir="$start_dir"
-    fi
-
-    if [ -n "$new_dir" ] && [ -n "$tab_name" ]; then
-        grep -v "^${tab_name}	" "$STATE_FILE" > "$STATE_FILE.tmp" 2>/dev/null
-        echo "${tab_name}	${new_dir}" >> "$STATE_FILE.tmp"
-        mv "$STATE_FILE.tmp" "$STATE_FILE"
-    fi
-
-    rm -f "$tmpfile"
-    [ -n "$new_dir" ] && start_dir="$new_dir"
-done
+start_dir=$(get_broot_root "$TAB_NAME")
+exec "$BROOT" "$start_dir"

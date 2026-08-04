@@ -1,0 +1,40 @@
+#!/bin/bash
+# open-in-vim: open a file path (with optional :line:col) in vim via zellij floating pane
+# Usage: open-in-vim path/to/file.rs:42:10
+#        open-in-vim /absolute/path/to/file.rs
+
+match="$1"
+[ -z "$match" ] && exit 1
+
+# Parse file:line:col
+file="${match%%:*}"
+rest="${match#"$file"}"
+line="${rest#:}"
+line="${line%%:*}"
+
+# Resolve to absolute path if needed
+if [[ "$file" != /* ]]; then
+    if [ -f "$PWD/$file" ]; then
+        file="$PWD/$file"
+    fi
+fi
+
+# Bail if file doesn't exist
+if [ ! -f "$file" ]; then
+    notify-send "open-in-vim" "File not found: $file" 2>/dev/null
+    exit 1
+fi
+
+# Build vim args
+vim_args=()
+if [ -n "$line" ] && [[ "$line" =~ ^[0-9]+$ ]]; then
+    vim_args+=("+$line")
+fi
+vim_args+=("$file")
+
+# Open in zellij floating pane if inside zellij, otherwise in current terminal
+if [ -n "$ZELLIJ" ]; then
+    zellij run --floating -- vim "${vim_args[@]}"
+else
+    vim "${vim_args[@]}"
+fi

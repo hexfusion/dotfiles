@@ -1,0 +1,113 @@
+#!/bin/bash
+# Hook script fired by Claude Code on SessionStart with source=clear.
+#
+# When the user runs /clear, Claude Code assigns a NEW session_id and
+# starts writing to a new .jsonl. Workbench's session map (which was
+# recorded when the pane launched) still points at the OLD session_id,
+# so the tab-stats widget would show stale stats.
+#
+# This hook does two things:
+#   1. Rewrites ~/.config/workbench/sessions/<instance>/<tab> to point
+#      at the NEW session_id, so `workbench tab info` reads the right file.
+#   2. Writes ~/.config/workbench/clear-baselines/<new-session-id> with
+#      the baseline line count / byte size so the widget shows 0 msgs.
+#
+# Hook payload (from Claude Code):
+#   {
+#     "session_id":     "<new-sid>",
+#     "transcript_path":"~/.claude/projects/-<cwd>/<new-sid>.jsonl",
+#     "cwd":            "<project cwd>",
+#     "hook_event_name":"SessionStart",
+#     "source":         "clear",
+#     "session_title":  "<tab-name>"    ← workbench sets this via `claude -n <tab>`
+#   }
+
+set -euo pipefail
+
+BASELINE_DIR="$HOME/.config/workbench/clear-baselines"
+SESSIONS_DIR="$HOME/.config/workbench/sessions"
+LOG_FILE="$HOME/.local/share/workbench/clear-marker.log"
+mkdir -p "$BASELINE_DIR" "$(dirname "$LOG_FILE")"
+
+payload="$(cat)"
+
+# Debug: capture raw payloads (small file, rotates by hand)
+echo "=== $(date -Iseconds) ===" >> "$HOME/.local/share/workbench/clear-marker-payloads.log"
+echo "$payload" >> "$HOME/.local/share/workbench/clear-marker-payloads.log"
+
+# Parse fields. Prefer jq; fall back to grep-based extraction.
+get_field() {
+    local key="$1"
+    if command -v jq >/dev/null 2>&1; then
+        echo "$payload" | jq -r --arg k "$key" '.[$k] // empty'
+    else
+        echo "$payload" | grep -oE "\"$key\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" | head -1 | sed 's/.*"\([^"]*\)"$/\1/'
+    fi
+}
+
+source_kind="$(get_field source)"
+session_id="$(get_field session_id)"
+transcript_path="$(get_field transcript_path)"
+session_title="$(get_field session_title)"
+
+ts="$(date -Iseconds)"
+
+if [[ "$source_kind" != "clear" ]]; then
+    echo "$ts source=$source_kind session=$session_id (skip: not a clear)" >> "$LOG_FILE"
+    exit 0
+fi
+
+if [[ -z "$transcript_path" || ! -f "$transcript_path" ]]; then
+    if [[ -n "$session_id" ]]; then
+        transcript_path="$(find "$HOME/.claude/projects" -name "${session_id}.jsonl" -type f 2>/dev/null | head -1)"
+    fi
+fi
+if [[ -z "$transcript_path" || ! -f "$transcript_path" ]]; then
+    echo "$ts source=clear session=$session_id (skip: no transcript path)" >> "$LOG_FILE"
+    exit 0
+fi
+
+# Baseline: line count + byte size at moment of /clear.
+lines="$(wc -l < "$transcript_path")"
+bytes="$(stat -c %s "$transcript_path")"
+
+{
+    echo "session_id=$session_id"
+    echo "transcript_path=$transcript_path"
+    echo "cleared_at=$ts"
+    echo "baseline_lines=$lines"
+    echo "baseline_bytes=$bytes"
+    echo "session_title=$session_title"
+} > "$BASELINE_DIR/${session_id}"
+
+# Repoint the workbench session map for the tab this /clear happened in.
+# We identify the tab by session_title (which equals the tab name because
+# workbench launches claude with `-n <tab-name>`). To disambiguate across
+# multiple instances that might share the same tab name (rare but possible),
+# we require the tab's currently-stored session_id to live in the SAME
+# project directory as the new transcript.
+tab_updated="none"
+if [[ -n "$session_title" ]]; then
+    project_dir="$(dirname "$transcript_path")"
+    matches=()
+    while IFS= read -r map_file; do
+        [[ -f "$map_file" ]] || continue
+        stored_sid="$(tr -d '[:space:]' < "$map_file")"
+        [[ -z "$stored_sid" ]] && continue
+        if [[ -f "$project_dir/${stored_sid}.jsonl" ]]; then
+            matches+=("$map_file")
+        fi
+    done < <(find "$SESSIONS_DIR" -name "$session_title" -type f 2>/dev/null)
+
+    if [[ ${#matches[@]} -eq 1 ]]; then
+        # Atomic swap: write to tmp then rename.
+        tmp="${matches[0]}.tmp.$$"
+        echo "$session_id" > "$tmp"
+        mv "$tmp" "${matches[0]}"
+        tab_updated="${matches[0]}"
+    elif [[ ${#matches[@]} -gt 1 ]]; then
+        tab_updated="ambiguous(${#matches[@]} matches)"
+    fi
+fi
+
+echo "$ts source=clear session=$session_id title=$session_title baseline_lines=$lines baseline_bytes=$bytes tab_map=$tab_updated" >> "$LOG_FILE"

@@ -1,0 +1,3 @@
+#!/bin/bash
+# Re-sign the last commit with GPG
+exec git commit --amend --no-edit -S

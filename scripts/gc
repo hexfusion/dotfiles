@@ -1,3 +1,46 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# gc - git commit with identity management
+#
+# Usage:
+#   gc "commit message"       # Work: sbatsche@redhat.com + GPG signed
+#   gc -p "commit message"    # Personal: sbatschelet@gmail.com, no GPG
+#   gc -a "commit message"    # Work + stage all tracked changes
+#   gc -pa "commit message"   # Personal + stage all tracked changes
 
-git commit -s -S -m "$@"
+set -euo pipefail
+
+WORK_EMAIL="sbatsche@redhat.com"
+WORK_KEY="85E2EAD14C6212C9"
+PERSONAL_EMAIL="sbatschelet@gmail.com"
+
+personal=false
+stage_all=false
+
+while getopts "pa" opt; do
+    case $opt in
+        p) personal=true ;;
+        a) stage_all=true ;;
+        *) echo "Usage: gc [-p] [-a] \"commit message\"" >&2; exit 1 ;;
+    esac
+done
+shift $((OPTIND - 1))
+
+if [[ $# -eq 0 ]]; then
+    echo "Usage: gc [-p] [-a] \"commit message\"" >&2
+    exit 1
+fi
+
+msg="$1"
+args=()
+
+if [[ "$stage_all" == true ]]; then
+    args+=("-a")
+fi
+
+if [[ "$personal" == true ]]; then
+    GIT_COMMITTER_EMAIL="$PERSONAL_EMAIL" GIT_COMMITTER_NAME="Sam Batschelet" \
+        git -c user.email="$PERSONAL_EMAIL" commit "${args[@]}" --author="Sam Batschelet <$PERSONAL_EMAIL>" --signoff -m "$msg"
+else
+    GIT_COMMITTER_EMAIL="$WORK_EMAIL" GIT_COMMITTER_NAME="Sam Batschelet" \
+        git -c user.email="$WORK_EMAIL" commit "${args[@]}" --author="Sam Batschelet <$WORK_EMAIL>" --signoff -S --gpg-sign="$WORK_KEY" -m "$msg"
+fi

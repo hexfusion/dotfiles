@@ -1,7 +1,9 @@
 #!/bin/bash
-# Find k10temp sensor dynamically
+# Find the CPU package sensor dynamically. Driver name differs by vendor:
+# k10temp on AMD (Framework 16), coretemp on Intel (ThinkPad P1).
+for driver in k10temp coretemp; do
 for hwmon in /sys/class/hwmon/hwmon*; do
-    if [ "$(cat "$hwmon/name" 2>/dev/null)" = "k10temp" ]; then
+    if [ "$(cat "$hwmon/name" 2>/dev/null)" = "$driver" ]; then
         temp=$(cat "$hwmon/temp1_input" 2>/dev/null)
         if [ -n "$temp" ]; then
             # Convert to Fahrenheit
@@ -11,5 +13,6 @@ for hwmon in /sys/class/hwmon/hwmon*; do
             exit 0
         fi
     fi
+done
 done
 echo '{"text": "󰔏 --", "class": "error"}'
